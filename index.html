@@ -21,6 +21,7 @@
       padding: 20px;
       border-radius: 8px;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
     }
     .buttons {
       display: flex;
@@ -45,6 +46,13 @@
       background-color: #007BFF;
       color: white;
     }
+    .contract {
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 10px;
+      background: #f9f9f9;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
@@ -56,6 +64,21 @@
       <button id="add-token">Add Token</button>
       <button id="redeem">Redeem Token</button>
       <button id="save">Save Tokens</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>Chore Token Contract</h2>
+    <div class="contract">
+      <p>
+        1. Tokens function as a currency, and balances carry over indefinitely.<br>
+        2. Both Alyx and Minty start with 0 tokens unless pre-agreed otherwise.<br>
+        3. A maximum of 2 tokens may be redeemed for chores per day.<br>
+        4. Tokens can be gambled, traded, or used for non-chore tasks (e.g., fetching beer).<br>
+        5. Denial of a token redemption must be based on reasonable cause, agreed upon by both parties. If no agreement is reached, the task must be carried out, or the denying party forfeits 2 tokens.<br>
+        6. One party may give as many tokens as they like to the other.<br>
+        7. There is no maximum redemption limit for goods and services outside of chores.
+      </p>
     </div>
   </div>
 
@@ -73,10 +96,15 @@
     // Add token
     document.getElementById('add-token').addEventListener('click', () => {
       const recipient = prompt("Who gets the token? (Alyx/Minty)").toLowerCase();
+      const count = parseInt(prompt("How many tokens would you like to add?"), 10);
+      if (isNaN(count) || count <= 0) {
+        alert("Please enter a valid number of tokens.");
+        return;
+      }
       if (recipient === "alyx") {
-        alyxTokens++;
+        alyxTokens += count;
       } else if (recipient === "minty") {
-        mintyTokens++;
+        mintyTokens += count;
       } else {
         alert("Invalid name! Please enter Alyx or Minty.");
       }
@@ -85,11 +113,16 @@
 
     // Redeem token
     document.getElementById('redeem').addEventListener('click', () => {
-      const redeemer = prompt("Who is redeeming a token? (Alyx/Minty)").toLowerCase();
-      if (redeemer === "alyx" && alyxTokens > 0) {
-        alyxTokens--;
-      } else if (redeemer === "minty" && mintyTokens > 0) {
-        mintyTokens--;
+      const redeemer = prompt("Who is redeeming tokens? (Alyx/Minty)").toLowerCase();
+      const count = parseInt(prompt("How many tokens would you like to redeem?"), 10);
+      if (isNaN(count) || count <= 0) {
+        alert("Please enter a valid number of tokens.");
+        return;
+      }
+      if (redeemer === "alyx" && alyxTokens >= count) {
+        alyxTokens -= count;
+      } else if (redeemer === "minty" && mintyTokens >= count) {
+        mintyTokens -= count;
       } else {
         alert("Not enough tokens or invalid name!");
       }
