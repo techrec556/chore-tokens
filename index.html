@@ -42,9 +42,24 @@
       background-color: #4CAF50;
       color: white;
     }
-    #redeem, #add-token {
+    #redeem, #add-token, #upload-file {
       background-color: #007BFF;
       color: white;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    label {
+      display: inline-block;
+      padding: 10px 15px;
+      font-size: 16px;
+      color: white;
+      background-color: #FFA500;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    label:hover {
+      opacity: 0.9;
     }
     .contract {
       font-size: 14px;
@@ -64,6 +79,8 @@
       <button id="add-token">Add Token</button>
       <button id="redeem">Redeem Token</button>
       <button id="save">Save Tokens</button>
+      <label for="file-upload">Upload Tokens</label>
+      <input type="file" id="file-upload" accept=".txt">
     </div>
   </div>
 
@@ -152,6 +169,29 @@
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
+    });
+
+    // Upload tokens from a file
+    document.getElementById('file-upload').addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const lines = e.target.result.split("\n");
+        if (lines[0].trim() !== "CT") {
+          alert("Invalid file format!");
+          return;
+        }
+        const alyxLine = lines.find(line => line.startsWith("Alyx's Tokens:"));
+        const mintyLine = lines.find(line => line.startsWith("Minty's Tokens:"));
+
+        alyxTokens = parseInt(alyxLine.split(":")[1].trim(), 10) || 0;
+        mintyTokens = parseInt(mintyLine.split(":")[1].trim(), 10) || 0;
+
+        updateDisplay();
+      };
+      reader.readAsText(file);
     });
 
     // Initial display update
