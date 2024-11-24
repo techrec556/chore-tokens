@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chore Token Manager</title>
+    <script src="https://www.gstatic.com/firebasejs/9.25.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.25.0/firebase-firestore.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .container { max-width: 800px; margin: auto; }
@@ -20,14 +22,13 @@
         <h1>Chore Token Manager</h1>
         <p>Track, redeem, and manage tokens with ease.</p>
 
-        <h2>Your Tokens: <span id="your-tokens" class="token-count">0</span></h2>
-        <h2>Partner's Tokens: <span id="partner-tokens" class="token-count">0</span></h2>
+        <h2>Alyx's Tokens: <span id="alyx-tokens" class="token-count">Loading...</span></h2>
+        <h2>Minty's Tokens: <span id="minty-tokens" class="token-count">Loading...</span></h2>
 
         <h3>Actions</h3>
-        <button onclick="redeemToken('your', 'chore')">Redeem Chore Token</button>
-        <button onclick="redeemToken('your', 'goods')">Redeem Goods/Services</button>
+        <button onclick="redeemToken('alyx', 'chore')">Redeem Chore Token</button>
+        <button onclick="redeemToken('alyx', 'goods')">Redeem Goods/Services</button>
         <button onclick="giftTokens()">Gift Tokens</button>
-        <button onclick="logTransaction()">View Logs</button>
 
         <h3>Transaction Log</h3>
         <table>
@@ -41,99 +42,98 @@
             </thead>
             <tbody id="log-body">
                 <tr>
-                    <td colspan="4">No transactions yet.</td>
+                    <td colspan="4">Loading...</td>
                 </tr>
             </tbody>
         </table>
     </div>
 
     <script>
-        let yourTokens = 0;
-        let partnerTokens = 0;
-        const dailyLimit = 2;
-        let yourDailyChores = 0;
-        let partnerDailyChores = 0;
-        const log = [];
+        // Firebase configuration (replace with your own)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-        function redeemToken(user, type) {
-            const currentDate = new Date().toDateString();
-            if (!localStorage.date || localStorage.date !== currentDate) {
-                localStorage.date = currentDate;
-                yourDailyChores = 0;
-                partnerDailyChores = 0;
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore(app);
+
+        const alyxTokensRef = db.collection('users').doc('alyx');
+        const mintyTokensRef = db.collection('users').doc('minty');
+        const logRef = db.collection('logs');
+
+        async function updateTokens() {
+            const alyxDoc = await alyxTokensRef.get();
+            const mintyDoc = await mintyTokensRef.get();
+
+            const alyxTokens = alyxDoc.exists ? alyxDoc.data().tokens : 0;
+            const mintyTokens = mintyDoc.exists ? mintyDoc.data().tokens : 0;
+
+            document.getElementById('alyx-tokens').textContent = alyxTokens;
+            document.getElementById('minty-tokens').textContent = mintyTokens;
+        }
+
+        async function redeemToken(user, type) {
+            const userRef = user === 'alyx' ? alyxTokensRef : mintyTokensRef;
+            const userDoc = await userRef.get();
+            const currentTokens = userDoc.exists ? userDoc.data().tokens : 0;
+
+            if (currentTokens <= 0) {
+                alert(`${user.charAt(0).toUpperCase() + user.slice(1)} has no tokens left!`);
+                return;
             }
 
-            const maxLimit = type === 'chore' ? dailyLimit : Infinity;
-
-            if (user === 'your') {
-                if (type === 'chore' && yourDailyChores >= maxLimit) {
-                    alert("You’ve reached your daily chore token limit!");
-                    return;
-                }
-                if (yourTokens > 0) {
-                    yourTokens--;
-                    if (type === 'chore') yourDailyChores++;
-                    logAction(user, `Redeemed a ${type} token`, `Task or service fulfilled`);
-                } else {
-                    alert("You don’t have enough tokens!");
-                }
-            } else if (user === 'partner') {
-                if (type === 'chore' && partnerDailyChores >= maxLimit) {
-                    alert("Your partner has reached their daily chore token limit!");
-                    return;
-                }
-                if (partnerTokens > 0) {
-                    partnerTokens--;
-                    if (type === 'chore') partnerDailyChores++;
-                    logAction(user, `Redeemed a ${type} token`, `Task or service fulfilled`);
-                } else {
-                    alert("Your partner doesn’t have enough tokens!");
-                }
-            }
+            await userRef.update({ tokens: currentTokens - 1 });
+            logTransaction(user, `Redeemed a ${type} token`, `Task or service fulfilled`);
             updateTokens();
         }
 
-        function giftTokens() {
+        async function giftTokens() {
             const amount = parseInt(prompt("Enter the number of tokens to gift:"), 10);
             if (isNaN(amount) || amount <= 0) {
                 alert("Invalid token amount!");
                 return;
             }
-            const user = prompt("Gift tokens to: 'your' or 'partner'?");
-            if (user === 'your') {
-                yourTokens += amount;
-                logAction('partner', 'Gifted tokens', `+${amount} to you`);
-            } else if (user === 'partner') {
-                partnerTokens += amount;
-                logAction('your', 'Gifted tokens', `+${amount} to partner`);
-            } else {
-                alert("Invalid user!");
-            }
+            const recipient = prompt("Gift tokens to: 'alyx' or 'minty'?");
+            const recipientRef = recipient === 'alyx' ? alyxTokensRef : mintyTokensRef;
+            const recipientDoc = await recipientRef.get();
+            const currentTokens = recipientDoc.exists ? recipientDoc.data().tokens : 0;
+
+            await recipientRef.set({ tokens: currentTokens + amount });
+            logTransaction('admin', `Gifted tokens`, `+${amount} to ${recipient}`);
             updateTokens();
         }
 
-        function updateTokens() {
-            document.getElementById('your-tokens').textContent = yourTokens;
-            document.getElementById('partner-tokens').textContent = partnerTokens;
-        }
-
-        function logAction(user, action, details) {
-            const currentDate = new Date().toLocaleString();
-            log.push({ date: currentDate, user, action, details });
+        async function logTransaction(user, action, details) {
+            await logRef.add({
+                date: new Date().toISOString(),
+                user,
+                action,
+                details
+            });
             renderLog();
         }
 
-        function renderLog() {
+        async function renderLog() {
+            const logs = await logRef.orderBy('date', 'desc').get();
             const logBody = document.getElementById('log-body');
             logBody.innerHTML = '';
-            log.forEach(entry => {
+            logs.forEach(doc => {
+                const entry = doc.data();
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>${entry.date}</td><td>${entry.user}</td><td>${entry.action}</td><td>${entry.details}</td>`;
+                row.innerHTML = `<td>${new Date(entry.date).toLocaleString()}</td><td>${entry.user}</td><td>${entry.action}</td><td>${entry.details}</td>`;
                 logBody.appendChild(row);
             });
         }
 
+        // Initialize
         updateTokens();
+        renderLog();
     </script>
 </body>
 </html>
