@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chore Token Manager</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        button { margin: 5px; padding: 10px 15px; cursor: pointer; }
+        .token-count { font-size: 1.5em; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        table, th, td { border: 1px solid black; }
+        th, td { padding: 10px; text-align: center; }
+        th { background-color: #f4f4f4; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chore Token Manager</h1>
+        <p>Track, redeem, and manage tokens with ease.</p>
+
+        <h2>Your Tokens: <span id="your-tokens" class="token-count">0</span></h2>
+        <h2>Partner's Tokens: <span id="partner-tokens" class="token-count">0</span></h2>
+
+        <h3>Actions</h3>
+        <button onclick="redeemToken('your', 'chore')">Redeem Chore Token</button>
+        <button onclick="redeemToken('your', 'goods')">Redeem Goods/Services</button>
+        <button onclick="giftTokens()">Gift Tokens</button>
+        <button onclick="logTransaction()">View Logs</button>
+
+        <h3>Transaction Log</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody id="log-body">
+                <tr>
+                    <td colspan="4">No transactions yet.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let yourTokens = 0;
+        let partnerTokens = 0;
+        const dailyLimit = 2;
+        let yourDailyChores = 0;
+        let partnerDailyChores = 0;
+        const log = [];
+
+        function redeemToken(user, type) {
+            const currentDate = new Date().toDateString();
+            if (!localStorage.date || localStorage.date !== currentDate) {
+                localStorage.date = currentDate;
+                yourDailyChores = 0;
+                partnerDailyChores = 0;
+            }
+
+            const maxLimit = type === 'chore' ? dailyLimit : Infinity;
+
+            if (user === 'your') {
+                if (type === 'chore' && yourDailyChores >= maxLimit) {
+                    alert("You’ve reached your daily chore token limit!");
+                    return;
+                }
+                if (yourTokens > 0) {
+                    yourTokens--;
+                    if (type === 'chore') yourDailyChores++;
+                    logAction(user, `Redeemed a ${type} token`, `Task or service fulfilled`);
+                } else {
+                    alert("You don’t have enough tokens!");
+                }
+            } else if (user === 'partner') {
+                if (type === 'chore' && partnerDailyChores >= maxLimit) {
+                    alert("Your partner has reached their daily chore token limit!");
+                    return;
+                }
+                if (partnerTokens > 0) {
+                    partnerTokens--;
+                    if (type === 'chore') partnerDailyChores++;
+                    logAction(user, `Redeemed a ${type} token`, `Task or service fulfilled`);
+                } else {
+                    alert("Your partner doesn’t have enough tokens!");
+                }
+            }
+            updateTokens();
+        }
+
+        function giftTokens() {
+            const amount = parseInt(prompt("Enter the number of tokens to gift:"), 10);
+            if (isNaN(amount) || amount <= 0) {
+                alert("Invalid token amount!");
+                return;
+            }
+            const user = prompt("Gift tokens to: 'your' or 'partner'?");
+            if (user === 'your') {
+                yourTokens += amount;
+                logAction('partner', 'Gifted tokens', `+${amount} to you`);
+            } else if (user === 'partner') {
+                partnerTokens += amount;
+                logAction('your', 'Gifted tokens', `+${amount} to partner`);
+            } else {
+                alert("Invalid user!");
+            }
+            updateTokens();
+        }
+
+        function updateTokens() {
+            document.getElementById('your-tokens').textContent = yourTokens;
+            document.getElementById('partner-tokens').textContent = partnerTokens;
+        }
+
+        function logAction(user, action, details) {
+            const currentDate = new Date().toLocaleString();
+            log.push({ date: currentDate, user, action, details });
+            renderLog();
+        }
+
+        function renderLog() {
+            const logBody = document.getElementById('log-body');
+            logBody.innerHTML = '';
+            log.forEach(entry => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${entry.date}</td><td>${entry.user}</td><td>${entry.action}</td><td>${entry.details}</td>`;
+                logBody.appendChild(row);
+            });
+        }
+
+        updateTokens();
+    </script>
+</body>
+</html>
